@@ -14,9 +14,6 @@ class User:
         self.id = uuid4()
         self.tickets = []
 
-    def __str__(self) -> str:
-        return "{} {} {}".format(self.id, self.name, self.tickets)
-
 
 class Ticket:
     def __init__(self, name_event: str, date_event: str, id: UUID, name: str) -> None:
@@ -36,10 +33,6 @@ class Event:
         self.status = EventStatuses.ACTUAL
         self.date = dt.strptime(date_string, '%d.%m.%y %H:%M')
         self.tickets_number = tickets_number
-
-    def __str__(self) -> str:
-        str_status = "Актуально" if self.status else "Не актуально"
-        return "{} {} {}".format(self.name, self.date, str_status)
 
 
 events: list[Event] = []
@@ -75,6 +68,7 @@ def buyTicket(user_id: UUID, name_event: str) -> None:
     else:
         ticket = Ticket(event.name, event.date, user_id, user.name)
         user.tickets.append(ticket)
+        event.tickets_number -= 1
         print(
             f"Билет на мероприятие '{name_event}' куплен для пользователя {user.name}.")
         return
@@ -82,19 +76,23 @@ def buyTicket(user_id: UUID, name_event: str) -> None:
 
 # Получить список актуальных мероприятий
 
-def getActualEvents() -> list[Event]:
-    return [event for event in events if event.status == 1]
+def getActualEvents() -> list[str]:
+    today = dt.now()
+    for event in events:
+        if today > event.date:
+            event.status = EventStatuses.NOT_ACTUAL
+    return [event.name for event in events if event.status == EventStatuses.ACTUAL]
 
 # Прислать напоминание о мероприятии
 
 
 def sentNotifications(event_name: str) -> None:
-    event = [e for e in events if e.name == event_name][0]
-    if event:
+    event = next((e for e in events if e.name == event_name), None)
+    if event is None:
+        print("Мероприятие не найдено")
+    else:
         print(
             f"Напоминание: Скоро начнется мероприятие '{event.name}' в {event.date}")
-    else:
-        print("Мероприятие не найдено")
 
 # Выгрузка о посещении мероприятий конкретным пользователем
 
@@ -104,31 +102,4 @@ def userAttendance(user_id: UUID) -> list[str]:
     if user is None:
         print(f"Пользователь с id {user_id} не найден.")
         return []
-
     return [ticket.name_event for ticket in user.tickets]
-
-
-# Создание пользователя
-u = addUser("Kirill")
-print(u.id)
-print(users)
-
-# Добавление мероприятий
-addEvent("Новогодняя елка", "31.12.23 12:48", 10)
-addEvent("Дискотека", "13.01.24 14:50", 10)
-
-# Покупка билетов
-buyTicket(u.id, "Новогодняя елка")
-buyTicket(u.id, "Дискотека")
-
-# Получение списка актуальных мероприятий
-print("Актуальные мероприятия:")
-for event in getActualEvents():
-    print(event)
-
-# Отправка уведомления о мероприятии
-sentNotifications("Дискотека")
-
-# Получение списка мероприятий, которые посетил пользователь
-print("Посещенные мероприятия пользователем:")
-print(userAttendance(u.id))
